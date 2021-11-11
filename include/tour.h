@@ -15,7 +15,7 @@ struct tour_t {
 typedef struct tour_t* tour_t;
 
 // Apply for a tour node
-tour_t alloc_tour();
+tour_t create_tour();
 void copy_tour(tour_t dest, tour_t src);
 void output_tour(tour_t t);
 

@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <mpi.h>
+
 #include<tour.h>
 #include<tour-queue.h>
 #include<tour-stack.h>
@@ -33,6 +35,7 @@ const char* getfield(char* line, int num)
     return NULL;
 }
 
+
 void init();
 void bfs(tour_queue_t queue); // Breadth first search, used to expand enough nodes to allocate threads
 void* tsp(void* stack);
@@ -45,21 +48,13 @@ void init(FILE* stream)
 
     n = atoi(getfield(tmp, 1));
     printf("Number of cities %d\n", n);
-    // printf("Please enter the number of towns:\n");
 
-    // scanf("%d", &n);
 
-    int i, j;
-
-    for (i = 0; i < n; ++i) {
-        for (j = 0; j < n; ++j) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
             digraph[i][j] = i == j ? 0 : INT_MAX;
         }
     }
-
-    // printf("Input graph <a b weight> (a, b < n and a != b):\n");
-
-    // int a, b, w;
 
     int _row = 0;
     char* _tmp;
@@ -69,24 +64,20 @@ void init(FILE* stream)
         {
             _tmp = strdup(line);
             digraph[_row][_col] = atoi(getfield(_tmp, _col + 1));
-            printf("Field %d would be %d\n ", _col + 1, digraph[_row][_col] );
+            // printf("Field %d would be %d\n ", _col + 1, digraph[_row][_col] );
         }
         // NOTE strtok clobbers tmp
         _row++;
     }
     free(_tmp);
-    // while (scanf("%d %d %d", &a, &b, &w) != EOF) {
-    //     digraph[a][b] = w;
-    // }
 
     best_tour = malloc(sizeof(struct tour_t));
     best_tour->cost = INT_MAX;
 }
-
 // Breadth first search
 void bfs(tour_queue_t queue)
 {
-    tour_t cur_tour = alloc_tour();
+    tour_t cur_tour = create_tour();
 
     append_city(cur_tour, homecity, digraph[get_last_city(cur_tour)][homecity]);
     enqueue_copy(queue, cur_tour);
@@ -200,34 +191,26 @@ void* tsp(void* stack)
     return NULL;
 }
 
-
-
-
 int main()
 {
     FILE* stream = fopen("./datasets/P01/p01_d.txt", "r");
-    // freopen("in.txt", "r", stdin);
     init(stream);
 
-    tour_queue_t queue = alloc_queue();
-
+    tour_queue_t queue = create_queue();
     bfs(queue);
 
     thread_count = queue_size(queue);
     printf("Thread count = %d\n", thread_count);
-
     thread_handles = malloc(thread_count * sizeof(pthread_t));
 
-    int i;
-
-    for (i = 0; i < thread_count; ++i) {
+    for (int i = 0; i < thread_count; ++i) {
         tour_stack_t my_stack = alloc_stack();
         tour_t t = dequeue(queue);
         push(my_stack, t);
         pthread_create(&thread_handles[i], NULL, tsp, my_stack);
     }
 
-    for (i = 0; i < thread_count; ++i) {
+    for (int i = 0; i < thread_count; ++i) {
         pthread_join(thread_handles[i], NULL);
     }
 

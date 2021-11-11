@@ -1,6 +1,6 @@
 #include<tour.h>
 
-tour_t alloc_tour()
+tour_t create_tour()
 {
     tour_t tour = malloc(sizeof(struct tour_t));
 
@@ -38,7 +38,8 @@ void output_tour(tour_t t)
 
 int get_last_city(tour_t t)
 {
-    return t->tour[t->len - 1];
+    int idx = t->len <= 0 ? 0 : t->len - 1;
+    return t->tour[idx];
 }
 
 void append_city(tour_t t, int city, int digraph_value)

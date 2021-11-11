@@ -1,6 +1,6 @@
 #include<tour-queue.h>
 
-tour_queue_t alloc_queue()
+tour_queue_t create_queue()
 {
     tour_queue_t queue = malloc(sizeof(struct tour_queue_t));
 
@@ -18,7 +18,7 @@ void enqueue(tour_queue_t queue, tour_t t)
 
 void enqueue_copy(tour_queue_t queue, tour_t t)
 {
-    tour_t tmp = alloc_tour();
+    tour_t tmp = create_tour();
     copy_tour(tmp, t);
     enqueue(queue, tmp);
 }

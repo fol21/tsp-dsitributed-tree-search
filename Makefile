@@ -23,7 +23,7 @@ TEST_BIN := ${TEST}/bin
 OBJ = ./src/obj
 
 #Objects
-_FOBJ = vector.o benchmark.o utils.o tour.o tour-queue.o tour-stack.o
+_FOBJ = vector.o benchmark.o utils.o tour.o tour-queue.o tour-stack.o tour-mpi.o
 FOBJ := $(_FOBJ:%.o=./src/obj/%.o)
 
 # Params
@@ -53,6 +53,9 @@ tour-queue: ./src/tour-queue.c ./include/tour-queue.h
 tour-stack: ./src/tour-stack.c ./include/tour-stack.h
 	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
+tour-mpi: ./src/tour-mpi.c ./include/tour-mpi.h
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+
 
 dependencies:
 	make queue
@@ -62,6 +65,7 @@ dependencies:
 	make tour
 	make tour-queue
 	make tour-stack
+	make tour-mpi
 
 ###### Test ######
 

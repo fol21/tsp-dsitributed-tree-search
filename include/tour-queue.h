@@ -14,7 +14,7 @@ struct tour_queue_t {
 
 typedef struct tour_queue_t* tour_queue_t;
 
-tour_queue_t alloc_queue();
+tour_queue_t create_queue();
 void enqueue(tour_queue_t queue, tour_t t);
 void enqueue_copy(tour_queue_t queue, tour_t t);
 tour_t dequeue(tour_queue_t queue); // Out of the team

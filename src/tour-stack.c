@@ -18,7 +18,7 @@ void push(tour_stack_t stack, tour_t t)
 
 void push_copy(tour_stack_t stack, tour_t t)
 {
-    tour_t tmp = alloc_tour();
+    tour_t tmp = create_tour();
 
     copy_tour(tmp, t);
     push(stack, tmp);
