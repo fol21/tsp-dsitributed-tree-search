@@ -1,6 +1,7 @@
 # C/C++ compiler
 CC = gcc  
 CXX = g++
+MPICC = mpicc
 
 # Linker
 LD = ld
@@ -17,6 +18,8 @@ OFLAGS = -g -O -c
 
 # Folders
 BIN = ./bin
+TEST = ./test
+TEST_BIN := ${TEST}/bin
 OBJ = ./src/obj
 
 #Objects
@@ -62,11 +65,17 @@ dependencies:
 
 ###### Test ######
 
-%.test : test/%.test.c $(FOBJ)
+%.test : ${TEST}/%.test.c $(FOBJ)
 	make dependencies
-	$(CC) $(LIBS) $(CFLAGS) -o $(BIN)/test/$@ $^ $(LINKS)
+	$(CC) $(LIBS) $(CFLAGS) -o $(TEST_BIN)/$@ $^ $(LINKS)
 	clear
-	$(BIN)/test/$@
+	$(TEST_BIN)/$@
+
+%.mpi.test : ${TEST}/%.mpi.test.c $(FOBJ)
+	make dependencies
+	$(MPICC) $(LIBS) $(CFLAGS) -o $(TEST_BIN)/$@ $^ $(LINKS)
+	clear
+	mpiexec -np 4 $(TEST_BIN)/$@
 
 
 ###### Applications #####
@@ -74,6 +83,10 @@ dependencies:
 % : %.c $(FOBJ)
 	make dependencies
 	$(CC) $(LIBS) $(CFLAGS) -g -o $(BIN)/$@ $^ $(LINKS)
+
+%.mpi : %.mpi.c $(FOBJ)
+	make dependencies
+	$(MPICC) $(LIBS) $(CFLAGS) -g -o $(BIN)/$@ $^ $(LINKS)
 
 %.o : %.c $(FOBJ)
 	make dependencies
