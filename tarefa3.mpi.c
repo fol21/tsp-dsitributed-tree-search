@@ -1,20 +1,15 @@
-// Author: Wes Kendall
-// Copyright 2011 www.mpitutorial.com
-// This code is provided freely with the tutorials on mpitutorial.com. Feel
-// free to modify it for your own use. Any distribution of the code must
-// either provide a link to www.mpitutorial.com or keep this header intact.
-//
-// MPI_Send, MPI_Recv example. Communicates the number -1 from process 0
-// to process 1.
-//
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <limits.h>
+#include <string.h>
 
 #include<tour.h>
 #include<tour-mpi.h>
+#include<tour-queue.h>
+#include<tour-stack.h>
 
 void _print_tour(tour_t tour)
 {
@@ -24,6 +19,126 @@ void _print_tour(tour_t tour)
     printf(", %d", tour->tour[i]);
   }
   printf("]}\n");
+}
+
+#define CPU_NUM 4
+
+int digraph[MAX_CITY_NUM][MAX_CITY_NUM];
+int n;
+int homecity = 0;
+tour_t best_tour;
+
+int process_count = 0;
+pthread_t* thread_handles;
+pthread_mutex_t best_tour_mutex; /*mutex */
+
+
+const char* getfield(char* line, int num)
+{
+    const char* tok;
+    for (tok = strtok(line, ";");
+            tok && *tok;
+            tok = strtok(NULL, ";"))
+    {
+        if (!--num)
+            return tok;
+    }
+    return NULL;
+}
+
+
+void init();
+void bfs(tour_queue_t queue, int size); // Breadth first search, used to expand enough nodes to allocate threads
+void* tsp(void* stack);
+
+void init(FILE* stream)
+{
+    char line[1024];
+    fgets(line, 1024, stream);
+    char* tmp = strdup(line);
+
+    n = atoi(getfield(tmp, 1));
+    printf("Number of cities %d\n", n);
+
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            digraph[i][j] = i == j ? 0 : INT_MAX;
+        }
+    }
+
+    int _row = 0;
+    char* _tmp;
+    while (fgets(line, 1024, stream))
+    {
+        for(int _col = 0; _col < n; _col++)
+        {
+            _tmp = strdup(line);
+            digraph[_row][_col] = atoi(getfield(_tmp, _col + 1));
+            // printf("Field %d would be %d\n ", _col + 1, digraph[_row][_col] );
+        }
+        // NOTE strtok clobbers tmp
+        _row++;
+    }
+    free(_tmp);
+
+    best_tour = malloc(sizeof(struct tour_t));
+    best_tour->cost = INT_MAX;
+}
+// Breadth first search
+void bfs(tour_queue_t queue, int size){
+    tour_t cur_tour = create_tour();
+
+    append_city(cur_tour, homecity, digraph[homecity][homecity]);
+    enqueue_copy(queue, cur_tour);
+    free(cur_tour);
+
+    bool ready = false;
+
+    while (!queue_empty(queue) && !ready) {
+        cur_tour = dequeue(queue);
+
+        if (cur_tour->len == n) {
+            // Determine whether it can be updated
+            int city = get_last_city(cur_tour);
+
+            if (digraph[city][homecity] != INT_MAX
+                && cur_tour->cost + digraph[city][homecity] < best_tour->cost) {
+                // Optimal cost of renewal
+                best_tour->cost = cur_tour->cost + digraph[city][homecity];
+                // Update the optimal path
+                copy_tour(best_tour, cur_tour);
+                append_city(best_tour, homecity, digraph[get_last_city(best_tour)][homecity]);
+            }
+
+            continue;
+        }
+
+        for (int nbr = n - 1; nbr >= 1; --nbr) {
+            // Skip cur_ Existing nodes in the tour
+            if (find_in_tour(cur_tour, nbr) != -1) {
+                continue;
+            }
+
+            int new_cost = cur_tour->cost + digraph[get_last_city(cur_tour)][nbr];
+
+            // Branch boundary, skip the node that can not expand to a better solution
+            if (new_cost >= best_tour->cost) {
+                continue;
+            }
+
+            append_city(cur_tour, nbr, digraph[get_last_city(cur_tour)][nbr]);
+            enqueue_copy(queue, cur_tour);
+            remove_last_city(cur_tour, digraph[cur_tour->tour[cur_tour->len - 2]][cur_tour->tour[cur_tour->len - 1]]);
+
+            if (queue_size(queue) >= size) {
+                ready = true;
+                break;
+            }
+        }
+
+        free(cur_tour);
+    }
 }
 
 void* send(void* args)
@@ -83,21 +198,39 @@ int main(int argc, char** argv) {
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
 
-  if (world_rank == 0) {
-    sleep(3);
-    pthread_t* thread_handles = malloc((world_size - 1) * sizeof(pthread_t));
-    int i;
-    for (i = 1; i < world_size; i++) {
-        pthread_create(&thread_handles[i - 1], NULL, send, &i);
-    }
+  FILE* stream = fopen("./datasets/P01/p01_d.txt", "r");
+  init(stream);
 
-    for (i = 1; i < world_size; i++) {
-        pthread_join(thread_handles[i - 1], NULL);
+
+  if (world_rank == 0) {
+    sleep(2);
+    tour_queue_t queue = create_queue();
+    bfs(queue, world_size - 1);
+    process_count = queue_size(queue);
+    printf("Process count = %d\n", process_count);
+
+    for (int i = 0; i < process_count; ++i) {
+        tour_stack_t my_stack = alloc_stack();
+        tour_t t = dequeue(queue);
+        push(my_stack, t);
+        // Send Stack here
+        tour_stack_package_t pack = create_tour_stack_package(my_stack, i + 1);
+        send_tour_stack_package(pack);
     }
   } else {
-    pthread_t* receive_thread = malloc(sizeof(pthread_t));
-    pthread_create(receive_thread, NULL, receive, &world_rank);
-    pthread_join((pthread_t) &receive_thread, NULL);
+    // int i=0;
+    // while (0 == i)
+    //     sleep(2);
+    while(1)
+    {
+        sleep(3);
+        tour_stack_t stack = receive_tour_stack_package(0);
+        while(stack && !stack_empty(stack))
+        {
+            tour_t t = pop(stack);
+            _print_tour(t);
+        }
+    }
   }
   MPI_Finalize();
 }
