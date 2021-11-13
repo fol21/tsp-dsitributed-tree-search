@@ -49,7 +49,7 @@ const char* getfield(char* line, int num)
 
 void init();
 void bfs(tour_queue_t queue, int size); // Breadth first search, used to expand enough nodes to allocate threads
-void* tsp(void* stack);
+void* tsp(void* stack, int process_count, int rank);
 
 void init(FILE* stream)
 {
@@ -141,35 +141,63 @@ void bfs(tour_queue_t queue, int size){
     }
 }
 
-void* send(void* args)
+void* tsp(void* stack, int process_count, int rank)
 {
-    int* rank = (int*) args;
-    printf("thread assigned for sending to rank: %d\n", *rank);
-    sleep((*rank));
-    tour_t cur_tour = create_tour();
+    tour_stack_t my_stack = (tour_stack_t)stack;
+    tour_t cur_tour;
 
-    append_city(cur_tour, 1, 4);
-    append_city(cur_tour, 2, 5);
-    append_city(cur_tour, 3, 10);
-    append_city(cur_tour, 4, 2);
-    append_city(cur_tour, 1, 3);
-    send_tour_package(create_tour_package(cur_tour, *rank));
-    return NULL;
-}
-void* receive(void* args)
-{
-    int* rank = (int*) args;
-    printf("Process %d ready to receive.\n", *rank);
+    printf("[%s %d %ld] my_stack.size = %d\n", __FILE__, __LINE__, pthread_self(), stack_size(stack));
 
-    while(1)
-    {
-      tour_t tour =  receive_tour_package(0);
-      if(tour)
-      {
-          printf("Process %d received the following tour from process 0: ", *rank);
-          _print_tour(tour);
-      }
+    while (!stack_empty(my_stack)) {
+        cur_tour = pop(my_stack);
 
+        if (cur_tour->len == n) {
+            // Determine whether it can be updated
+            int city = get_last_city(cur_tour);
+
+            if (digraph[city][homecity] != INT_MAX
+                && cur_tour->cost + digraph[city][homecity] < best_tour->cost) {
+
+                // In the process of waiting for the lock, other processes 
+                // may have modified the optimal path, so it needs to be determined again
+                for (int i = 0; i < process_count; i++)
+                {
+                    int flag;
+                    tour_t _t = receive_tour_package(i + 1, &flag);
+                    best_tour = (flag && _t->cost < best_tour->cost) ? _t : best_tour;
+                }
+                if (cur_tour->cost + digraph[city][homecity] < best_tour->cost) {
+                    // Optimal cost of renewal
+                    best_tour->cost = cur_tour->cost + digraph[city][homecity];
+                    // Update the optimal path
+                    copy_tour(best_tour, cur_tour);
+                    append_city(best_tour, homecity, digraph[get_last_city(best_tour)][homecity]);
+                    
+                    for (int i = 0; i < process_count; i++)
+                    {
+                        if(i + 1 != rank)
+                            send_tour_package(create_tour_package(best_tour, i + 1));
+                    }
+                }
+            }
+            continue;
+        }
+
+        for (int nbr = n - 1; nbr >= 1; --nbr) {
+            // Skip cur_ Existing nodes in the tour
+            if (find_in_tour(cur_tour, nbr) != -1) {
+                continue;
+            }
+            int new_cost = cur_tour->cost + digraph[get_last_city(cur_tour)][nbr];
+            // Branch boundary, skip the node that can not expand to a better solution
+            if (new_cost >= best_tour->cost) {
+                continue;
+            }
+            append_city(cur_tour, nbr, digraph[get_last_city(cur_tour)][nbr]);
+            push_copy(my_stack, cur_tour);
+            remove_last_city(cur_tour, digraph[cur_tour->tour[cur_tour->len - 2]][cur_tour->tour[cur_tour->len - 1]]);
+        }
+        free(cur_tour);
     }
     return NULL;
 }
@@ -221,16 +249,10 @@ int main(int argc, char** argv) {
     // int i=0;
     // while (0 == i)
     //     sleep(2);
-    while(1)
-    {
-        sleep(3);
-        tour_stack_t stack = receive_tour_stack_package(0);
-        while(stack && !stack_empty(stack))
-        {
-            tour_t t = pop(stack);
-            _print_tour(t);
-        }
-    }
+    tour_stack_t my_stack = probe_receive_tour_stack_package(0);
+    tsp(my_stack, world_size - 1, world_rank);
+    _print_tour(best_tour);
+    output_tour(best_tour);
   }
   MPI_Finalize();
 }

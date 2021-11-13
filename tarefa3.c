@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <mpi.h>
-
 #include<tour.h>
 #include<tour-queue.h>
 #include<tour-stack.h>
@@ -21,6 +19,15 @@ int thread_count = 0;
 pthread_t* thread_handles;
 pthread_mutex_t best_tour_mutex; /*mutex */
 
+void _print_tour(tour_t tour)
+{
+  printf("{len: %d, cost: %d, tour: [%d", tour->len, tour->cost, tour->tour[0]);
+  for (int i = 1; i < tour->len; i++)
+  {
+    printf(", %d", tour->tour[i]);
+  }
+  printf("]}\n");
+}
 
 const char* getfield(char* line, int num)
 {
@@ -37,7 +44,7 @@ const char* getfield(char* line, int num)
 
 
 void init();
-void bfs(tour_queue_t queue); // Breadth first search, used to expand enough nodes to allocate threads
+void bfs(tour_queue_t queue, int size); // Breadth first search, used to expand enough nodes to allocate threads
 void* tsp(void* stack);
 
 void init(FILE* stream)
@@ -75,7 +82,7 @@ void init(FILE* stream)
     best_tour->cost = INT_MAX;
 }
 // Breadth first search
-void bfs(tour_queue_t queue)
+void bfs(tour_queue_t queue, int size)
 {
     tour_t cur_tour = create_tour();
 
@@ -121,7 +128,7 @@ void bfs(tour_queue_t queue)
             enqueue_copy(queue, cur_tour);
             remove_last_city(cur_tour, digraph[cur_tour->tour[cur_tour->len - 2]][cur_tour->tour[cur_tour->len - 1]]);
 
-            if (queue_size(queue) >= CPU_NUM) {
+            if (queue_size(queue) >= size) {
                 ready = true;
                 break;
             }
@@ -197,7 +204,7 @@ int main()
     init(stream);
 
     tour_queue_t queue = create_queue();
-    bfs(queue);
+    bfs(queue, CPU_NUM);
 
     thread_count = queue_size(queue);
     printf("Thread count = %d\n", thread_count);
@@ -215,6 +222,7 @@ int main()
     }
 
     printf("====== Best tour ======\n");
+    _print_tour(best_tour);
     output_tour(best_tour);
 
     free(queue);
