@@ -33,25 +33,25 @@ PARAMS = 16 1 1 1
 ###### Dependencies #######
 
 queue: ./src/queue.c ./include/queue.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 vector: ./src/vector.c ./include/vector.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 utils: ./src/utils.c ./include/utils.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 benchmark: ./src/benchmark.c ./include/benchmark.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 tour: ./src/tour.c ./include/tour.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 tour-queue: ./src/tour-queue.c ./include/tour-queue.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 tour-stack: ./src/tour-stack.c ./include/tour-stack.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
+	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 tour-mpi: ./src/tour-mpi.c ./include/tour-mpi.h
 	$(MPICC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
@@ -71,7 +71,7 @@ dependencies:
 
 %.test : ${TEST}/%.test.c $(FOBJ)
 	make dependencies
-	$(CC) $(LIBS) $(CFLAGS) -o $(TEST_BIN)/$@ $^ $(LINKS)
+	$(MPICC) $(LIBS) $(CFLAGS) -o $(TEST_BIN)/$@ $^ $(LINKS)
 	clear
 	$(TEST_BIN)/$@
 
@@ -86,7 +86,7 @@ dependencies:
 
 % : %.c $(FOBJ)
 	make dependencies
-	$(CC) $(LIBS) $(CFLAGS) -g -o $(BIN)/$@ $^ $(LINKS)
+	$(MPICC) $(LIBS) $(CFLAGS) -g -o $(BIN)/$@ $^ $(LINKS)
 
 %.mpi : %.mpi.c $(FOBJ)
 	make dependencies
@@ -94,4 +94,4 @@ dependencies:
 
 %.o : %.c $(FOBJ)
 	make dependencies
-	$(CC) $(LIBS) $(CFLAGS) ${OFLAGS} -o $@ $^ $(LINKS)
+	$(MPICC) $(LIBS) $(CFLAGS) ${OFLAGS} -o $@ $^ $(LINKS)
