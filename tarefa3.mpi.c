@@ -10,6 +10,7 @@
 #include<tour-mpi.h>
 #include<tour-queue.h>
 #include<tour-stack.h>
+#include <benchmark.h>
 
 void _print_tour(tour_t tour)
 {
@@ -202,16 +203,59 @@ void* tsp(void* stack, int process_count, int rank)
     return NULL;
 }
 
-int main(int argc, char** argv) {
-  { 
-    char hostname[256];
-    gethostname(hostname, sizeof(hostname));
-    printf("PID %d on %s ready for attach\n", getpid(), hostname);
-    fflush(stdout);
-  //   int i=0;
-  //   while (0 == i)
-  //     sleep(2);
-  }
+
+void main_routine(void* args)
+{
+    int world_size = *((int*) args);
+    tour_queue_t queue = create_queue();
+    bfs(queue, world_size - 1);
+    process_count = queue_size(queue);
+    printf("Process count = %d\n", process_count);
+    
+    for (int i = 0; i < process_count; ++i) {
+        tour_stack_t my_stack = alloc_stack();
+        tour_t t = dequeue(queue);
+        push(my_stack, t);
+        // Send Stack here
+        tour_stack_package_t pack = create_tour_stack_package(my_stack, i + 1);
+        send_tour_stack_package(pack);
+    }
+
+    for (size_t i = 0; i < process_count; i++)
+    {
+        tour_t tour = probe_receive_tour_package(i + 1);
+        if(tour->cost < best_tour->cost)
+            best_tour = tour;
+    }
+    _print_tour(best_tour);
+    output_tour(best_tour);
+}
+
+void process_routine(void* args)
+{
+    int* size_n_rank = (int*) args;
+    int world_size = size_n_rank[0];
+    int world_rank = size_n_rank[1];
+
+    tour_stack_t my_stack = probe_receive_tour_stack_package(0);
+    tsp(my_stack, world_size - 1, world_rank);
+    // _print_tour(best_tour);
+    // output_tour(best_tour);
+    send_tour_package(create_tour_package(best_tour, 0));
+}
+
+
+int main(int argc, char const *argv[])
+{ 
+    {
+        char hostname[256];
+        gethostname(hostname, sizeof(hostname));
+        printf("PID %d on %s ready for attach\n", getpid(), hostname);
+        fflush(stdout);
+        //   int i=0;
+        //   while (0 == i)
+        //     sleep(2);
+    }
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
   // Find out rank, size
@@ -226,33 +270,21 @@ int main(int argc, char** argv) {
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
 
-  FILE* stream = fopen("./datasets/P01/p01_d.txt", "r");
+  FILE* stream = fopen(argv[1], "r");
   init(stream);
 
-
   if (world_rank == 0) {
-    sleep(2);
-    tour_queue_t queue = create_queue();
-    bfs(queue, world_size - 1);
-    process_count = queue_size(queue);
-    printf("Process count = %d\n", process_count);
-
-    for (int i = 0; i < process_count; ++i) {
-        tour_stack_t my_stack = alloc_stack();
-        tour_t t = dequeue(queue);
-        push(my_stack, t);
-        // Send Stack here
-        tour_stack_package_t pack = create_tour_stack_package(my_stack, i + 1);
-        send_tour_stack_package(pack);
-    }
+    double time = stopwatch(main_routine, &world_size);
+    printf("====== Performance =======\n");
+    printf("Total calculation time: %.2f seconds\n", time);
   } else {
     // int i=0;
     // while (0 == i)
     //     sleep(2);
-    tour_stack_t my_stack = probe_receive_tour_stack_package(0);
-    tsp(my_stack, world_size - 1, world_rank);
-    _print_tour(best_tour);
-    output_tour(best_tour);
+    int size_n_rank[2] = {world_size, world_rank};
+    double time = stopwatch(process_routine, size_n_rank);
+    printf("====== Performance =======\n");
+    printf("Process %d calculation time: %.2f seconds\n", world_rank, time);
   }
   MPI_Finalize();
 }

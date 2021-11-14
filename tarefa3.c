@@ -8,7 +8,9 @@
 #include<tour-queue.h>
 #include<tour-stack.h>
 
-#define CPU_NUM 4
+#include <benchmark.h>
+
+int CPU_NUM = 1;
 
 int digraph[MAX_CITY_NUM][MAX_CITY_NUM];
 int n;
@@ -195,14 +197,20 @@ void* tsp(void* stack)
         free(cur_tour);
     }
 
+    return best_tour;
+}
+
+
+void* routine(void* stack)
+{
+    tsp(stack);
+    // _print_tour(best_tour);
+    // output_tour(best_tour);
     return NULL;
 }
 
-int main()
-{
-    FILE* stream = fopen("./datasets/P01/p01_d.txt", "r");
-    init(stream);
-
+void main_routine(void* args)
+{    
     tour_queue_t queue = create_queue();
     bfs(queue, CPU_NUM);
 
@@ -210,11 +218,13 @@ int main()
     printf("Thread count = %d\n", thread_count);
     thread_handles = malloc(thread_count * sizeof(pthread_t));
 
+    
+
     for (int i = 0; i < thread_count; ++i) {
         tour_stack_t my_stack = alloc_stack();
         tour_t t = dequeue(queue);
         push(my_stack, t);
-        pthread_create(&thread_handles[i], NULL, tsp, my_stack);
+        pthread_create(&thread_handles[i], NULL, routine, my_stack);
     }
 
     for (int i = 0; i < thread_count; ++i) {
@@ -226,6 +236,17 @@ int main()
     output_tour(best_tour);
 
     free(queue);
+}
 
+
+int main(int argc, char const *argv[])
+{
+    CPU_NUM = atoi(argv[1]);
+    FILE* stream = fopen(argv[2], "r");
+    init(stream);
+
+    double time = stopwatch(main_routine, NULL);
+    printf("====== Performance =======\n");
+    printf("Total calculation time: %.2f seconds\n", time);
     return 0;
 }

@@ -4,7 +4,7 @@
 #include<tour.h>
 #include<stdbool.h>
 
-#define MAX_STACK_SIZE 1024
+#define MAX_STACK_SIZE 2048
 
 struct tour_stack_t {
     tour_t list[MAX_STACK_SIZE];
