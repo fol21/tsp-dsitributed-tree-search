@@ -42,14 +42,14 @@ int get_last_city(tour_t t)
     return t->tour[idx];
 }
 
-void append_city(tour_t t, int city, int digraph_value)
+void append_city(tour_t t, int city, double digraph_value)
 {
     t->cost += digraph_value;
     // t->cost += digraph[get_last_city(t)][city];
     t->tour[t->len++] = city;
 }
 
-int remove_last_city(tour_t t, int digraph_value)
+int remove_last_city(tour_t t, double digraph_value)
 {
     t->cost -= digraph_value;
     // t->cost -= digraph[t->tour[t->len - 2]][t->tour[t->len - 1]];

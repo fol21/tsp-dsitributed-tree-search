@@ -9,7 +9,7 @@
 struct tour_t {
     int tour[MAX_CITY_NUM];
     int len;
-    int cost;
+    double cost;
 };
 
 typedef struct tour_t* tour_t;
@@ -20,8 +20,8 @@ void copy_tour(tour_t dest, tour_t src);
 void output_tour(tour_t t);
 
 int get_last_city(tour_t t);
-void append_city(tour_t t, int city, int digraph_value);
-int remove_last_city(tour_t t, int digraph_value);
+void append_city(tour_t t, int city, double digraph_value);
+int remove_last_city(tour_t t, double digraph_value);
 int find_in_tour(tour_t t, int city);
 
 #endif // !TOUR_H

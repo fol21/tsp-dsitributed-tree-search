@@ -3,19 +3,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 
 #include<tour.h>
 #include<tour-queue.h>
 #include<tour-stack.h>
+#include<utils.h>
 
 #include <benchmark.h>
 
 int CPU_NUM = 1;
 
-int digraph[MAX_CITY_NUM][MAX_CITY_NUM];
+double digraph[MAX_CITY_NUM][MAX_CITY_NUM];
 int n;
 int homecity = 0;
 tour_t best_tour;
+
 
 int thread_count = 0;
 pthread_t* thread_handles;
@@ -23,7 +26,7 @@ pthread_mutex_t best_tour_mutex; /*mutex */
 
 void _print_tour(tour_t tour)
 {
-  printf("{len: %d, cost: %d, tour: [%d", tour->len, tour->cost, tour->tour[0]);
+  printf("{len: %d, cost: %.2f, tour: [%d", tour->len, tour->cost, tour->tour[0]);
   for (int i = 1; i < tour->len; i++)
   {
     printf(", %d", tour->tour[i]);
@@ -119,7 +122,7 @@ void bfs(tour_queue_t queue, int size)
                 continue;
             }
 
-            int new_cost = cur_tour->cost + digraph[get_last_city(cur_tour)][nbr];
+            double new_cost = cur_tour->cost + digraph[get_last_city(cur_tour)][nbr];
 
             // Branch boundary, skip the node that can not expand to a better solution
             if (new_cost >= best_tour->cost) {
@@ -154,6 +157,7 @@ void* tsp(void* stack)
             // Determine whether it can be updated
             int city = get_last_city(cur_tour);
 
+            // printf("[%ld] stack size: %d\n", pthread_self(), stack_size(my_stack));
             if (digraph[city][homecity] != INT_MAX
                 && cur_tour->cost + digraph[city][homecity] < best_tour->cost) {
 
@@ -164,6 +168,7 @@ void* tsp(void* stack)
                 if (cur_tour->cost + digraph[city][homecity] < best_tour->cost) {
                     // Optimal cost of renewal
                     best_tour->cost = cur_tour->cost + digraph[city][homecity];
+                    printf("[%ld] Best tour found: cost = %.2f, stack size: %d\n", pthread_self(), best_tour->cost, stack_size(my_stack));
                     // Update the optimal path
                     copy_tour(best_tour, cur_tour);
                     append_city(best_tour, homecity, digraph[get_last_city(best_tour)][homecity]);
@@ -242,8 +247,22 @@ void main_routine(void* args)
 int main(int argc, char const *argv[])
 {
     CPU_NUM = atoi(argv[1]);
-    FILE* stream = fopen(argv[2], "r");
-    init(stream);
+
+    bool is_coord = atoi(argv[2]);
+    FILE* stream = fopen(argv[3], "r");
+    if(is_coord)
+    {
+        Digraph_s* _d = coord_to_digraph(stream, euclidian_distance);
+        n = _d->num_cities;
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < n; ++j)
+                digraph[i][j] = (_d->digraph)[i][j];
+    
+        best_tour = malloc(sizeof(struct tour_t));
+        best_tour->cost = INT_MAX;
+    }
+    else
+        init(stream);
 
     double time = stopwatch(main_routine, NULL);
     printf("====== Performance =======\n");

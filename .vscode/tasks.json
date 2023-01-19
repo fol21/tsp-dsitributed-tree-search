@@ -3,7 +3,7 @@
         {
             "type": "cppbuild",
             "label": "C/C++: gcc arquivo de build ativo",
-            "command": "/usr/bin/mpicc",
+            "command": "/usr/bin/gcc",
             "args": [
                 "-pthread", "-lpthread", "-lrt",
                  "-fopenmp",

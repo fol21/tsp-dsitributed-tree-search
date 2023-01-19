@@ -1,7 +1,7 @@
 # C/C++ compiler
 CC = gcc  
 CXX = g++
-MPICC = mpicc
+MPICC = gcc
 
 # Linker
 LD = ld
@@ -23,7 +23,7 @@ TEST_BIN := ${TEST}/bin
 OBJ = ./src/obj
 
 #Objects
-_FOBJ = vector.o benchmark.o utils.o tour.o tour-queue.o tour-stack.o tour-mpi.o
+_FOBJ = vector.o benchmark.o utils.o tour.o tour-queue.o tour-stack.o
 FOBJ := $(_FOBJ:%.o=./src/obj/%.o)
 
 # Params
@@ -65,7 +65,7 @@ dependencies:
 	make tour
 	make tour-queue
 	make tour-stack
-	make tour-mpi
+	# make tour-mpi
 
 ###### Test ######
 

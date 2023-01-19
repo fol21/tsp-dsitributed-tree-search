@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/bin/${fileBasenameNoExtension}",
-            "args": [],
+            "args": ["12", "1", "datasets/tsp.txt"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
